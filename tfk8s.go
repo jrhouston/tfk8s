@@ -137,6 +137,7 @@ func main() {
 
 	// TODO support stripping server-side fields
 	// TODO find a way of ordering the keys
+	// TODO add flag for adding provider attribute
 
 	if outfile != "" {
 		ioutil.WriteFile(outfile, []byte(hcl), 0644)
