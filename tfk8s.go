@@ -112,7 +112,7 @@ func ToHCL(r io.Reader) (string, error) {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage %s <resource.yaml>\n", os.Args[0])
+		fmt.Printf("Usage: %s <input.yaml> [output.tf]\n", os.Args[0])
 		os.Exit(1)
 	}
 
