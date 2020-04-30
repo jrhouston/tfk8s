@@ -14,6 +14,8 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+var toolVersion string
+
 const resourceType = "kubernetes_manifest_hcl"
 
 // NOTE The terraform console formatter only supports map[string]interface{}
@@ -148,7 +150,13 @@ func main() {
 	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
 	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
 	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
+	version := flag.BoolP("version", "v", false, "Show tool version")
 	flag.Parse()
+
+	if *version {
+		fmt.Println(toolVersion)
+		os.Exit(0)
+	}
 
 	var file *os.File
 	if *infile == "-" {
