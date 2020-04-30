@@ -7,6 +7,10 @@ tfk8s
 
 If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert YAML to HCL by hand, this tool is for you. 
 
+## Demo 
+
+[<img src="https://asciinema.org/a/DlXE2kxQKAsmRlV8f4ANlhf6g.svg" width="250">](https://asciinema.org/a/DlXE2kxQKAsmRlV8f4ANlhf6g)
+
 ## Features
 
 - Convert a YAML file containing multiple manifests
