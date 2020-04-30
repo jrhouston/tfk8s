@@ -53,7 +53,7 @@ func fixMap(m map[interface{}]interface{}) map[string]interface{} {
 	return fixed
 }
 
-func toHCL(doc map[interface{}]interface{}) (string, error) {
+func toHCL(doc map[interface{}]interface{}, providerAlias string) (string, error) {
 	hcl := ""
 
 	formattable := fixMap(doc)
@@ -70,6 +70,9 @@ func toHCL(doc map[interface{}]interface{}) (string, error) {
 	resourceName := strings.ToLower(kind) + "_" + name
 
 	hcl += fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
+	if providerAlias != "" {
+		hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
+	}
 	hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
 	hcl += fmt.Sprintf("}\n")
 
@@ -78,7 +81,7 @@ func toHCL(doc map[interface{}]interface{}) (string, error) {
 
 // ToHCL converts a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func ToHCL(r io.Reader) (string, error) {
+func ToHCL(r io.Reader, providerAlias string) (string, error) {
 	hcl := ""
 
 	decoder := yaml.NewDecoder(r)
@@ -97,7 +100,7 @@ func ToHCL(r io.Reader) (string, error) {
 			}
 		}
 
-		formatted, err := toHCL(doc)
+		formatted, err := toHCL(doc, providerAlias)
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
@@ -115,6 +118,7 @@ func ToHCL(r io.Reader) (string, error) {
 func main() {
 	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
 	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
+	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
 	flag.Parse()
 
 	var file *os.File
@@ -129,16 +133,14 @@ func main() {
 		}
 	}
 
-	hcl, err := ToHCL(file)
+	hcl, err := ToHCL(file, *providerAlias)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	// TODO use -f for input and -o for output
 	// TODO support stripping server-side fields
 	// TODO find a way of ordering the keys
-	// TODO add flag for adding provider attribute
 
 	if *outfile == "-" {
 		fmt.Print(hcl)
