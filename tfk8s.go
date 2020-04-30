@@ -17,15 +17,15 @@ const resourceType = "kubernetes_manifest_hcl"
 // NOTE The terraform console formatter only supports map[string]interface{}
 // but the yaml parser spits out map[interface{}]interface{} so we need to convert
 
-func fixslice(s []interface{}) []interface{} {
+func fixSlice(s []interface{}) []interface{} {
 	fixed := []interface{}{}
 
 	for _, v := range s {
 		switch v.(type) {
 		case map[interface{}]interface{}:
-			fixed = append(fixed, fixmap(v.(map[interface{}]interface{})))
+			fixed = append(fixed, fixMap(v.(map[interface{}]interface{})))
 		case []interface{}:
-			fixed = append(fixed, fixslice(v.([]interface{})))
+			fixed = append(fixed, fixSlice(v.([]interface{})))
 		default:
 			fixed = append(fixed, v)
 		}
@@ -34,15 +34,15 @@ func fixslice(s []interface{}) []interface{} {
 	return fixed
 }
 
-func fixmap(m map[interface{}]interface{}) map[string]interface{} {
+func fixMap(m map[interface{}]interface{}) map[string]interface{} {
 	fixed := map[string]interface{}{}
 
 	for k, v := range m {
 		switch v.(type) {
 		case map[interface{}]interface{}:
-			fixed[k.(string)] = fixmap(v.(map[interface{}]interface{}))
+			fixed[k.(string)] = fixMap(v.(map[interface{}]interface{}))
 		case []interface{}:
-			fixed[k.(string)] = fixslice(v.([]interface{}))
+			fixed[k.(string)] = fixSlice(v.([]interface{}))
 		default:
 			fixed[k.(string)] = v
 		}
@@ -54,7 +54,7 @@ func fixmap(m map[interface{}]interface{}) map[string]interface{} {
 func toHCL(doc map[interface{}]interface{}) (string, error) {
 	hcl := ""
 
-	formattable := fixmap(doc)
+	formattable := fixMap(doc)
 	s, err := repl.FormatResult(formattable)
 	if err != nil {
 		return "", err
