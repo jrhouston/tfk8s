@@ -3,9 +3,9 @@ package main
 import (
 	"strings"
 	"testing"
-)
 
-// TODO add diffing for when the tests fail
+	"github.com/stretchr/testify/assert"
+)
 
 func TestToHCLSingle(t *testing.T) {
 	yaml := `---
@@ -17,7 +17,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r)
+	output, err := ToHCL(r, "")
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -37,9 +37,7 @@ resource "kubernetes_manifest_hcl" "configmap_test" {
   }
 }`
 
-	if strings.TrimSpace(expected) != strings.TrimSpace(output) {
-		t.Errorf("\nExpected:\n%v\nGot:\n%v\n", strings.TrimSpace(expected), strings.TrimSpace(output))
-	}
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
 func TestToHCLMultiple(t *testing.T) {
@@ -59,7 +57,7 @@ data:
   TEST: two`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r)
+	output, err := ToHCL(r, "")
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -92,7 +90,40 @@ resource "kubernetes_manifest_hcl" "configmap_two" {
   }
 }`
 
-	if strings.TrimSpace(expected) != strings.TrimSpace(output) {
-		t.Errorf("\nExpected:\n%v\n\nGot:\n%v\n", strings.TrimSpace(expected), strings.TrimSpace(output))
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}
+
+func TestToHCLProviderAlias(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  TEST: test`
+
+	r := strings.NewReader(yaml)
+	output, err := ToHCL(r, "kubernetes-alpha")
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
 	}
+
+	expected := `
+resource "kubernetes_manifest_hcl" "configmap_test" {
+  provider = kubernetes-alpha
+
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "test"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "test"
+    }
+  }
+}`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
