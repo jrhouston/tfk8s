@@ -5,7 +5,12 @@ tfk8s
 
 `tfk8s` is a tool for converting Kubernetes YAML manifests to HashiCorp's HCL for use the with the [Terraform Kubernetes Provider](https://github.com/hashicorp/terraform-provider-kubernetes-alpha).
 
-If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert them to HCL by hand, this tool is for you. It also works with multiple resources in one YAML file.
+If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert them to HCL by hand, this tool is for you. 
+
+## Features
+
+- Convert a YAML file containing multiple manifests
+- Strip out server side fields when piping `kubectl get $R -o yaml | tfk8s --strip`
 
 ## Install
 

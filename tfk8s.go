@@ -53,10 +53,37 @@ func fixMap(m map[interface{}]interface{}) map[string]interface{} {
 	return fixed
 }
 
-func toHCL(doc map[interface{}]interface{}, providerAlias string) (string, error) {
+func stripServerSideFields(m map[string]interface{}) {
+	delete(m, "status")
+
+	metadata := m["metadata"].(map[string]interface{})
+	delete(metadata, "creationTimestamp")
+	delete(metadata, "resourceVersion")
+	delete(metadata, "selfLink")
+	delete(metadata, "uid")
+	if metadata["namespace"].(string) == "default" {
+		delete(metadata, "namespace")
+	}
+
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if ok {
+		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
+		if len(annotations) == 0 {
+			delete(metadata, "annotations")
+		}
+	}
+}
+
+func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool) (string, error) {
 	hcl := ""
 
 	formattable := fixMap(doc)
+
+	if stripServerSide {
+		stripServerSideFields(formattable)
+	}
+
+	// TODO need to find a way of ordering the fields in the output
 	s, err := repl.FormatResult(formattable)
 	if err != nil {
 		return "", err
@@ -81,7 +108,7 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string) (string, error
 
 // ToHCL converts a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func ToHCL(r io.Reader, providerAlias string) (string, error) {
+func ToHCL(r io.Reader, providerAlias string, stripServerSide bool) (string, error) {
 	hcl := ""
 
 	decoder := yaml.NewDecoder(r)
@@ -100,7 +127,8 @@ func ToHCL(r io.Reader, providerAlias string) (string, error) {
 			}
 		}
 
-		formatted, err := toHCL(doc, providerAlias)
+		formatted, err := toHCL(doc, providerAlias, stripServerSide)
+
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
@@ -119,6 +147,7 @@ func main() {
 	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
 	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
 	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
+	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
 	flag.Parse()
 
 	var file *os.File
@@ -133,14 +162,11 @@ func main() {
 		}
 	}
 
-	hcl, err := ToHCL(file, *providerAlias)
+	hcl, err := ToHCL(file, *providerAlias, *stripServerSide)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	// TODO support stripping server-side fields
-	// TODO find a way of ordering the keys
 
 	if *outfile == "-" {
 		fmt.Print(hcl)
