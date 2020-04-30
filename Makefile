@@ -1,11 +1,11 @@
 .PHONY: build release install test clean
 
-VERSION := 0.1.0
+VERSION := 0.1.1
 
 build:
 	go build -ldflags "-X main.toolVersion=${VERSION}"
 
-release:
+release: clean
 	mkdir -p release/
 	GOOS=linux GOOARCH=386 go build -ldflags "-X main.toolVersion=${VERSION}" -o release/tfk8s_${VERSION}_linux_386
 	zip release/tfk8s_${VERSION}_linux_386.zip release/tfk8s_${VERSION}_linux_386

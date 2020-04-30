@@ -63,7 +63,7 @@ func stripServerSideFields(m map[string]interface{}) {
 	delete(metadata, "resourceVersion")
 	delete(metadata, "selfLink")
 	delete(metadata, "uid")
-	if metadata["namespace"].(string) == "default" {
+	if v, ok := metadata["namespace"].(string); ok && v == "default" {
 		delete(metadata, "namespace")
 	}
 
