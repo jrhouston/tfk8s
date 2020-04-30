@@ -14,10 +14,12 @@ If you want to copy examples from the Kubernetes documentation or migrate existi
 
 ## Install
 
-For the moment, clone this repo and:
+Grab the binary from the [releases](https://github.com/jrhouston/tfk8s/releases) page.
+
+Or clone this repo and:
 
 ```
-go install
+make install
 ```
 
 ## Usage
