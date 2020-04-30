@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/terraform/repl"
 	"gopkg.in/yaml.v2"
+
+	flag "github.com/spf13/pflag"
 )
 
 const resourceType = "kubernetes_manifest_hcl"
@@ -111,37 +113,36 @@ func ToHCL(r io.Reader) (string, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <input.yaml> [output.tf]\n", os.Args[0])
-		os.Exit(1)
+	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
+	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
+	flag.Parse()
+
+	var file *os.File
+	if *infile == "-" {
+		file = os.Stdin
+	} else {
+		var err error
+		file, err = os.Open(*infile)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
-	infile := os.Args[1]
-
-	var outfile string
-	if len(os.Args) == 3 {
-		outfile = os.Args[2]
-	}
-
-	f, err := os.Open(infile)
+	hcl, err := ToHCL(file)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	hcl, err := ToHCL(f)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
+	// TODO use -f for input and -o for output
 	// TODO support stripping server-side fields
 	// TODO find a way of ordering the keys
 	// TODO add flag for adding provider attribute
 
-	if outfile != "" {
-		ioutil.WriteFile(outfile, []byte(hcl), 0644)
-	} else {
+	if *outfile == "-" {
 		fmt.Print(hcl)
+	} else {
+		ioutil.WriteFile(*outfile, []byte(hcl), 0644)
 	}
 }

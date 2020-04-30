@@ -18,7 +18,12 @@ go install
 ## Usage
 
 ```
-tfk8s input.yaml output.tf
+tfk8s -f input.yaml -o output.tf
+```
+
+or, using pipes: 
+```
+cat input.yaml | tfk8s > output.tf
 ```
 
 **input.yaml**:
