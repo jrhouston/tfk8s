@@ -24,7 +24,7 @@ data:
 	}
 
 	expected := `
-resource "kubernetes_manifest_hcl" "configmap_test" {
+resource "kubernetes_manifest" "configmap_test" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {
@@ -64,7 +64,7 @@ data:
 	}
 
 	expected := `
-resource "kubernetes_manifest_hcl" "configmap_one" {
+resource "kubernetes_manifest" "configmap_one" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {
@@ -77,7 +77,7 @@ resource "kubernetes_manifest_hcl" "configmap_one" {
   }
 }
 
-resource "kubernetes_manifest_hcl" "configmap_two" {
+resource "kubernetes_manifest" "configmap_two" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {
@@ -110,7 +110,7 @@ data:
 	}
 
 	expected := `
-resource "kubernetes_manifest_hcl" "configmap_test" {
+resource "kubernetes_manifest" "configmap_test" {
   provider = kubernetes-alpha
 
   manifest = {
@@ -153,7 +153,7 @@ metadata:
 	}
 
 	expected := `
-resource "kubernetes_manifest_hcl" "configmap_test" {
+resource "kubernetes_manifest" "configmap_test" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {

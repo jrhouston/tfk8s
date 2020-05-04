@@ -16,7 +16,7 @@ import (
 
 var toolVersion string
 
-const resourceType = "kubernetes_manifest_hcl"
+const resourceType = "kubernetes_manifest"
 
 // NOTE The terraform console formatter only supports map[string]interface{}
 // but the yaml parser spits out map[interface{}]interface{} so we need to convert
@@ -63,6 +63,7 @@ func stripServerSideFields(m map[string]interface{}) {
 	delete(metadata, "resourceVersion")
 	delete(metadata, "selfLink")
 	delete(metadata, "uid")
+	delete(metadata, "managedFields")
 	if v, ok := metadata["namespace"].(string); ok && v == "default" {
 		delete(metadata, "namespace")
 	}
