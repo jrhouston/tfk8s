@@ -9,7 +9,7 @@ If you want to copy examples from the Kubernetes documentation or migrate existi
 
 ## Demo 
 
-[<img src="https://asciinema.org/a/DlXE2kxQKAsmRlV8f4ANlhf6g.svg" width="250">](https://asciinema.org/a/DlXE2kxQKAsmRlV8f4ANlhf6g)
+[<img src="https://asciinema.org/a/5VZoVK03s9BYSLLWUZd6XmAxx.svg" width="250">](https://asciinema.org/a/5VZoVK03s9BYSLLWUZd6XmAxx)
 
 ## Features
 
