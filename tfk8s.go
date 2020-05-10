@@ -55,15 +55,22 @@ func fixMap(m map[interface{}]interface{}) map[string]interface{} {
 	return fixed
 }
 
+var serverSideMetadataFields = []string{
+	"creationTimestamp",
+	"resourceVersion",
+	"selfLink",
+	"uid",
+	"managedFields",
+	"finalizers",
+}
+
 func stripServerSideFields(m map[string]interface{}) {
 	delete(m, "status")
 
 	metadata := m["metadata"].(map[string]interface{})
-	delete(metadata, "creationTimestamp")
-	delete(metadata, "resourceVersion")
-	delete(metadata, "selfLink")
-	delete(metadata, "uid")
-	delete(metadata, "managedFields")
+	for _, f := range serverSideMetadataFields {
+		delete(metadata, f)
+	}
 	if v, ok := metadata["namespace"].(string); ok && v == "default" {
 		delete(metadata, "namespace")
 	}
@@ -75,11 +82,14 @@ func stripServerSideFields(m map[string]interface{}) {
 			delete(metadata, "annotations")
 		}
 	}
+
+	spec, ok := m["spec"].(map[string]interface{})
+	if ok {
+		delete(spec, "finalizers")
+	}
 }
 
-func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool) (string, error) {
-	hcl := ""
-
+func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	formattable := fixMap(doc)
 
 	if stripServerSide {
@@ -92,26 +102,36 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSid
 		return "", err
 	}
 
-	name := formattable["metadata"].(map[string]interface{})["name"].(string)
-	re := regexp.MustCompile("[.-]")
-	name = strings.ToLower(re.ReplaceAllString(name, "_"))
-
 	kind := formattable["kind"].(string)
-	resourceName := strings.ToLower(kind) + "_" + name
 
-	hcl += fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
-	if providerAlias != "" {
-		hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
+	var name, resourceName string
+	if kind != "List" {
+		name = formattable["metadata"].(map[string]interface{})["name"].(string)
+		re := regexp.MustCompile("[.-]")
+		name = strings.ToLower(re.ReplaceAllString(name, "_"))
+		resourceName = strings.ToLower(kind) + "_" + name
+	} else if !mapOnly {
+		return "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
 	}
-	hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
-	hcl += fmt.Sprintf("}\n")
+
+	var hcl string
+	if mapOnly {
+		hcl = fmt.Sprintf("%v\n", s)
+	} else {
+		hcl = fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
+		if providerAlias != "" {
+			hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
+		}
+		hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
+		hcl += fmt.Sprintf("}\n")
+	}
 
 	return hcl, nil
 }
 
 // ToHCL converts a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func ToHCL(r io.Reader, providerAlias string, stripServerSide bool) (string, error) {
+func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	hcl := ""
 
 	decoder := yaml.NewDecoder(r)
@@ -130,7 +150,7 @@ func ToHCL(r io.Reader, providerAlias string, stripServerSide bool) (string, err
 			}
 		}
 
-		formatted, err := toHCL(doc, providerAlias, stripServerSide)
+		formatted, err := toHCL(doc, providerAlias, stripServerSide, mapOnly)
 
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
@@ -152,6 +172,7 @@ func main() {
 	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
 	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
 	version := flag.BoolP("version", "V", false, "Show tool version")
+	mapOnly := flag.BoolP("map-only", "M", false, "Output only an HCL map structure")
 	flag.Parse()
 
 	if *version {
@@ -171,7 +192,7 @@ func main() {
 		}
 	}
 
-	hcl, err := ToHCL(file, *providerAlias, *stripServerSide)
+	hcl, err := ToHCL(file, *providerAlias, *stripServerSide, *mapOnly)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

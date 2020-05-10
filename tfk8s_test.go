@@ -17,7 +17,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", false)
+	output, err := ToHCL(r, "", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -57,7 +57,7 @@ data:
   TEST: two`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", false)
+	output, err := ToHCL(r, "", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -103,7 +103,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "kubernetes-alpha", false)
+	output, err := ToHCL(r, "kubernetes-alpha", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -143,10 +143,12 @@ metadata:
   namespace: default
   resourceVersion: "677134"
   selfLink: /api/v1/namespaces/default/configmaps/test
-  uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
+  uid: bea6500b-0637-4d2d-b726-e0bda0b595dd
+  finalizers:
+  - test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", true)
+	output, err := ToHCL(r, "", true, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -163,6 +165,40 @@ resource "kubernetes_manifest" "configmap_test" {
     "metadata" = {
       "name" = "test"
     }
+  }
+}`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}
+
+func TestToHCLMapOnly(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+data:
+  TEST: test
+kind: ConfigMap
+metadata:
+  name: test
+  namespace: default
+  resourceVersion: "677134"
+  selfLink: /api/v1/namespaces/default/configmaps/test
+  uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
+
+	r := strings.NewReader(yaml)
+	output, err := ToHCL(r, "", true, true)
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
+	}
+
+	expected := `{
+  "apiVersion" = "v1"
+  "data" = {
+    "TEST" = "test"
+  }
+  "kind" = "ConfigMap"
+  "metadata" = {
+    "name" = "test"
   }
 }`
 
