@@ -28,6 +28,8 @@ make install
 
 ## Usage
 
+### Creating Terraform configurations
+
 ```
 tfk8s -f input.yaml -o output.tf
 ```
@@ -62,6 +64,33 @@ resource "kubernetes_manifest_hcl" "configmap_test" {
     "metadata" = {
       "name" = "test"
     }
+  }
+}
+```
+
+### Use with kubectl to output maps instead of YAML
+
+```
+kubectl get ns default -o yaml | tfk8s -M
+```
+```hcl
+{
+  "apiVersion" = "v1"
+  "kind" = "Namespace"
+  "metadata" = {
+    "creationTimestamp" = "2020-05-02T15:01:32Z"
+    "name" = "default"
+    "resourceVersion" = "147"
+    "selfLink" = "/api/v1/namespaces/default"
+    "uid" = "6ac3424c-07a4-4a69-86ae-cc7a4ae72be3"
+  }
+  "spec" = {
+    "finalizers" = [
+      "kubernetes",
+    ]
+  }
+  "status" = {
+    "phase" = "Active"
   }
 }
 ```
