@@ -187,7 +187,7 @@ func main() {
 		var err error
 		file, err = os.Open(*infile)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintf(os.Stderr, "%s\r\n", err.Error())
 			os.Exit(1)
 		}
 	}
