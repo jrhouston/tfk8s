@@ -24,6 +24,12 @@ For the moment, clone this repo and run:
 make install
 ```
 
+If Go's bin directory is not in your `PATH` you will need to add it:
+
+```
+export PATH=$PATH:$(go env GOPATH)/bin
+```
+
 ## Usage
 
 ### Creating Terraform configurations
