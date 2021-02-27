@@ -107,7 +107,7 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSid
 	var name, resourceName string
 	if kind != "List" {
 		name = formattable["metadata"].(map[string]interface{})["name"].(string)
-		re := regexp.MustCompile("[.-]")
+		re := regexp.MustCompile(`\W`)
 		name = strings.ToLower(re.ReplaceAllString(name, "_"))
 		resourceName = strings.ToLower(kind) + "_" + name
 	} else if !mapOnly {

@@ -1,6 +1,6 @@
 .PHONY: build release install test clean
 
-VERSION := 0.1.0
+VERSION := 0.1.1
 
 build:
 	go build -ldflags "-X main.toolVersion=${VERSION}"
