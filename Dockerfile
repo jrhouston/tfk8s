@@ -1,14 +1,11 @@
-FROM golang:1.15-buster as build
+FROM golang:1.16-alpine as build
 WORKDIR /build
-ARG version
 COPY go.* .
-RUN go mod download
+RUN go mod download 
 COPY . .
-ENV CGO_ENABLED 0
-RUN  go build -ldflags "-X main.toolVersion=$version" -o tfk8s && \
-     chmod +x tfk8s
+RUN apk --no-cache add make
+RUN CGO_ENABLED=0 make build
 
-FROM alpine
+FROM scratch
 COPY --from=build /build/tfk8s /bin/tfk8s
 ENTRYPOINT ["/bin/tfk8s"]
-
