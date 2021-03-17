@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,7 +10,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/repl"
-	"gopkg.in/yaml.v2"
+	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
+
+	k8syaml "sigs.k8s.io/yaml"
 
 	flag "github.com/spf13/pflag"
 )
@@ -64,55 +68,59 @@ var serverSideMetadataFields = []string{
 	"finalizers",
 }
 
-func stripServerSideFields(m map[string]interface{}) {
-	delete(m, "status")
+func stripServerSideFields(doc cty.Value) cty.Value {
+	m := doc.AsValueMap()
 
-	metadata := m["metadata"].(map[string]interface{})
+	// strip server-side metadata
+	metadata := m["metadata"].AsValueMap()
 	for _, f := range serverSideMetadataFields {
 		delete(metadata, f)
 	}
-	if v, ok := metadata["namespace"].(string); ok && v == "default" {
-		delete(metadata, "namespace")
-	}
-
-	annotations, ok := metadata["annotations"].(map[string]interface{})
-	if ok {
+	if v, ok := metadata["annotations"]; ok {
+		annotations := v.AsValueMap()
 		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
 		if len(annotations) == 0 {
 			delete(metadata, "annotations")
+		} else {
+			metadata["annotations"] = cty.ObjectVal(annotations)
 		}
 	}
-
-	spec, ok := m["spec"].(map[string]interface{})
-	if ok {
-		delete(spec, "finalizers")
+	if ns, ok := metadata["namespace"]; ok && ns.AsString() == "default" {
+		delete(metadata, "namespace")
 	}
+	m["metadata"] = cty.ObjectVal(metadata)
+
+	// strip finalizer from spec
+	if v, ok := m["spec"]; ok {
+		mm := v.AsValueMap()
+		delete(mm, "finalizers")
+		m["spec"] = cty.ObjectVal(mm)
+	}
+
+	// strip status field
+	delete(m, "status")
+
+	return cty.ObjectVal(m)
 }
 
-func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
-	formattable := fixMap(doc)
-
-	if stripServerSide {
-		stripServerSideFields(formattable)
-	}
-
-	// TODO need to find a way of ordering the fields in the output
-	s, err := repl.FormatResult(formattable)
-	if err != nil {
-		return "", err
-	}
-
-	kind := formattable["kind"].(string)
-
+func toHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	var name, resourceName string
+	m := doc.AsValueMap()
+	kind := m["kind"].AsString()
 	if kind != "List" {
-		name = formattable["metadata"].(map[string]interface{})["name"].(string)
+		metadata := m["metadata"].AsValueMap()
+		name = metadata["name"].AsString()
 		re := regexp.MustCompile(`\W`)
 		name = strings.ToLower(re.ReplaceAllString(name, "_"))
 		resourceName = strings.ToLower(kind) + "_" + name
 	} else if !mapOnly {
 		return "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
 	}
+
+	if stripServerSide {
+		doc = stripServerSideFields(doc)
+	}
+	s := repl.FormatValue(doc, 0)
 
 	var hcl string
 	if mapOnly {
@@ -129,25 +137,37 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSid
 	return hcl, nil
 }
 
+var yamlSeparator = "\n---"
+
 // ToHCL converts a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
 func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	hcl := ""
 
-	decoder := yaml.NewDecoder(r)
+	buf := bytes.Buffer{}
+	_, err := buf.ReadFrom(r)
+	if err != nil {
+		return "", err
+	}
 
 	count := 0
-	var err error
-	for {
-		var doc map[interface{}]interface{}
-		err = decoder.Decode(&doc)
-
+	manifest := string(buf.Bytes())
+	docs := strings.Split(manifest, yamlSeparator)
+	for _, doc := range docs {
+		var b []byte
+		b, err = k8syaml.YAMLToJSON([]byte(doc))
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return "", fmt.Errorf("error parsing YAML: %s", err)
-			}
+			return "", err
+		}
+
+		t, err := ctyjson.ImpliedType(b)
+		if err != nil {
+			return "", err
+		}
+
+		doc, err := ctyjson.Unmarshal(b, t)
+		if err != nil {
+			return "", err
 		}
 
 		formatted, err := toHCL(doc, providerAlias, stripServerSide, mapOnly)
