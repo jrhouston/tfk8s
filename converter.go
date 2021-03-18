@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 
@@ -15,8 +13,6 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
 	"sigs.k8s.io/yaml"
-
-	flag "github.com/spf13/pflag"
 )
 
 // toolVersion is the version that gets printed when you run --version
@@ -81,10 +77,10 @@ func stripServerSideFields(doc cty.Value) cty.Value {
 	return cty.ObjectVal(m)
 }
 
-// yamlToHCL converts a single YAML document Terraform HCL
-func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+// ctyToHCL takes a cty.Value containing a Kubernetes resource and returns the corresponding HCL and it's Kind
+func ctyToHCL(v cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, string, error) {
 	var name, resourceName string
-	m := doc.AsValueMap()
+	m := v.AsValueMap()
 	kind := m["kind"].AsString()
 	if kind != "List" {
 		metadata := m["metadata"].AsValueMap()
@@ -93,13 +89,13 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 		name = strings.ToLower(re.ReplaceAllString(name, "_"))
 		resourceName = strings.ToLower(kind) + "_" + name
 	} else if !mapOnly {
-		return "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
+		return "", "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
 	}
 
 	if stripServerSide {
-		doc = stripServerSideFields(doc)
+		v = stripServerSideFields(v)
 	}
-	s := repl.FormatValue(doc, 0)
+	s := repl.FormatValue(v, 0)
 
 	var hcl string
 	if mapOnly {
@@ -113,93 +109,62 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 		hcl += fmt.Sprintf("}\n")
 	}
 
-	return hcl, nil
+	return hcl, kind, nil
 }
 
 var yamlSeparator = "\n---"
 
+// yamlToCty converts a string containing one YAML document to a cty.Value
+func yamlToCty(doc string) (cty.Value, error) {
+	// this sucks but basically we just convert the YAML
+	// to JSON then run it through ctyjson.Marshal
+	b, err := yaml.YAMLToJSON([]byte(doc))
+	if err != nil {
+		return cty.NilVal, err
+	}
+
+	t, err := ctyjson.ImpliedType(b)
+	if err != nil {
+		return cty.NilVal, err
+	}
+
+	v, err := ctyjson.Unmarshal(b, t)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	return v, nil
+}
+
 // YAMLToTerraformResources takes a file containing one or more Kubernetes configs
-// and converts it to resources that can be used by the Terraform Kubernetes Provider
-func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
-	hcl := ""
+// and converts it to resources that can be used by the Terraform Kubernetes Provider.
+//
+// This function returns both a string slice with the HCL of each resource and a
+// map which buckets the HCL for each resource by its Kind.
+func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) ([]string, map[string][]string, error) {
+	resources := []string{}
+	resourcesMap := map[string][]string{}
 
 	buf := bytes.Buffer{}
 	_, err := buf.ReadFrom(r)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
 
-	count := 0
 	manifest := string(buf.Bytes())
 	docs := strings.Split(manifest, yamlSeparator)
 	for _, doc := range docs {
-		var b []byte
-		b, err = yaml.YAMLToJSON([]byte(doc))
+		v, err := yamlToCty(doc)
 		if err != nil {
-			return "", err
+			return nil, nil, fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
-
-		t, err := ctyjson.ImpliedType(b)
+		resource, kind, err := ctyToHCL(v, providerAlias, stripServerSide, mapOnly)
 		if err != nil {
-			return "", err
+			return nil, nil, err
 		}
 
-		doc, err := ctyjson.Unmarshal(b, t)
-		if err != nil {
-			return "", err
-		}
-
-		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
-
-		if err != nil {
-			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
-		}
-
-		if count > 0 {
-			hcl += "\n"
-		}
-		hcl += formatted
-		count++
+		resources = append(resources, resource)
+		resourcesMap[kind] = append(resourcesMap[kind], resource)
 	}
 
-	return hcl, nil
-}
-
-func main() {
-	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
-	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
-	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
-	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
-	version := flag.BoolP("version", "V", false, "Show tool version")
-	mapOnly := flag.BoolP("map-only", "M", false, "Output only an HCL map structure")
-	flag.Parse()
-
-	if *version {
-		fmt.Println(toolVersion)
-		os.Exit(0)
-	}
-
-	var file *os.File
-	if *infile == "-" {
-		file = os.Stdin
-	} else {
-		var err error
-		file, err = os.Open(*infile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\r\n", err.Error())
-			os.Exit(1)
-		}
-	}
-
-	hcl, err := YAMLToTerraformResources(file, *providerAlias, *stripServerSide, *mapOnly)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	if *outfile == "-" {
-		fmt.Print(hcl)
-	} else {
-		ioutil.WriteFile(*outfile, []byte(hcl), 0644)
-	}
+	return resources, resourcesMap, nil
 }
