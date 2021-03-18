@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestToHCLSingle(t *testing.T) {
+func TestYAMLToTerraformResourcesSingle(t *testing.T) {
 	yaml := `---
 apiVersion: v1
 kind: ConfigMap
@@ -17,7 +17,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -40,7 +40,7 @@ resource "kubernetes_manifest" "configmap_test" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
-func TestToHCLMultiple(t *testing.T) {
+func TestYAMLToTerraformResourcesMultiple(t *testing.T) {
 	yaml := `---
 apiVersion: v1
 kind: ConfigMap
@@ -57,7 +57,7 @@ data:
   TEST: two`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -93,7 +93,7 @@ resource "kubernetes_manifest" "configmap_two" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
-func TestToHCLProviderAlias(t *testing.T) {
+func TestYAMLToTerraformResourcesProviderAlias(t *testing.T) {
 	yaml := `---
 apiVersion: v1
 kind: ConfigMap
@@ -103,7 +103,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "kubernetes-alpha", false, false)
+	output, err := YAMLToTerraformResources(r, "kubernetes-alpha", false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -128,7 +128,7 @@ resource "kubernetes_manifest" "configmap_test" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
-func TestToHCLProviderServerSideStrip(t *testing.T) {
+func TestYAMLToTerraformResourcesProviderServerSideStrip(t *testing.T) {
 	yaml := `---
 apiVersion: v1
 data:
@@ -148,7 +148,7 @@ metadata:
   - test`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", true, false)
+	output, err := YAMLToTerraformResources(r, "", true, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -171,7 +171,7 @@ resource "kubernetes_manifest" "configmap_test" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
-func TestToHCLMapOnly(t *testing.T) {
+func TestYAMLToTerraformResourcesMapOnly(t *testing.T) {
 	yaml := `---
 apiVersion: v1
 data:
@@ -185,7 +185,7 @@ metadata:
   uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
 
 	r := strings.NewReader(yaml)
-	output, err := ToHCL(r, "", true, true)
+	output, err := YAMLToTerraformResources(r, "", true, true)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
