@@ -89,13 +89,23 @@ func stripServerSideFields(m map[string]interface{}) {
 	}
 }
 
-func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool, mapOnly bool, defaultNamespace bool) (string, error) {
 	formattable := fixMap(doc)
 
 	if stripServerSide {
 		stripServerSideFields(formattable)
 	}
 
+	if defaultNamespace {
+		// Add "namespace" = "default" to metadata if no namespace specified
+		metadata, ok := formattable["metadata"].(map[string]interface{})
+		if !ok {
+			return "", fmt.Errorf("manifest is missing metadata")
+		}
+		if _, ok := metadata["namespace"]; !ok {
+			metadata["namespace"] = "default"
+		}
+	}
 	// TODO need to find a way of ordering the fields in the output
 	s, err := repl.FormatResult(formattable)
 	if err != nil {
@@ -131,7 +141,7 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSid
 
 // ToHCL converts a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool, defaultNamespace bool) (string, error) {
 	hcl := ""
 
 	decoder := yaml.NewDecoder(r)
@@ -150,7 +160,7 @@ func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool
 			}
 		}
 
-		formatted, err := toHCL(doc, providerAlias, stripServerSide, mapOnly)
+		formatted, err := toHCL(doc, providerAlias, stripServerSide, mapOnly, defaultNamespace)
 
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
@@ -170,6 +180,7 @@ func main() {
 	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
 	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
 	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
+	defaultNamespace := flag.BoolP("namespace", "n", false, "Fill in default namespace when none is set")
 	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
 	version := flag.BoolP("version", "V", false, "Show tool version")
 	mapOnly := flag.BoolP("map-only", "M", false, "Output only an HCL map structure")
@@ -192,7 +203,7 @@ func main() {
 		}
 	}
 
-	hcl, err := ToHCL(file, *providerAlias, *stripServerSide, *mapOnly)
+	hcl, err := ToHCL(file, *providerAlias, *stripServerSide, *mapOnly, *defaultNamespace)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
