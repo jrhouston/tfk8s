@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,53 +10,24 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform/repl"
-	"gopkg.in/yaml.v2"
+
+	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
+
+	"sigs.k8s.io/yaml"
 
 	flag "github.com/spf13/pflag"
 )
 
+// toolVersion is the version that gets printed when you run --version
 var toolVersion string
 
-const resourceType = "kubernetes_manifest"
+// resourceType is the type of Terraform resource
+var resourceType = "kubernetes_manifest"
 
-// NOTE The terraform console formatter only supports map[string]interface{}
-// but the yaml parser spits out map[interface{}]interface{} so we need to convert
-
-func fixSlice(s []interface{}) []interface{} {
-	fixed := []interface{}{}
-
-	for _, v := range s {
-		switch v.(type) {
-		case map[interface{}]interface{}:
-			fixed = append(fixed, fixMap(v.(map[interface{}]interface{})))
-		case []interface{}:
-			fixed = append(fixed, fixSlice(v.([]interface{})))
-		default:
-			fixed = append(fixed, v)
-		}
-	}
-
-	return fixed
-}
-
-func fixMap(m map[interface{}]interface{}) map[string]interface{} {
-	fixed := map[string]interface{}{}
-
-	for k, v := range m {
-		switch v.(type) {
-		case map[interface{}]interface{}:
-			fixed[k.(string)] = fixMap(v.(map[interface{}]interface{}))
-		case []interface{}:
-			fixed[k.(string)] = fixSlice(v.([]interface{}))
-		default:
-			fixed[k.(string)] = v
-		}
-	}
-
-	return fixed
-}
-
-var serverSideMetadataFields = []string{
+// ignoreMetadata is the list of metadata fields to strip
+// when --strip is supplied
+var ignoreMetadata = []string{
 	"creationTimestamp",
 	"resourceVersion",
 	"selfLink",
@@ -64,55 +36,70 @@ var serverSideMetadataFields = []string{
 	"finalizers",
 }
 
-func stripServerSideFields(m map[string]interface{}) {
-	delete(m, "status")
-
-	metadata := m["metadata"].(map[string]interface{})
-	for _, f := range serverSideMetadataFields {
-		delete(metadata, f)
-	}
-	if v, ok := metadata["namespace"].(string); ok && v == "default" {
-		delete(metadata, "namespace")
-	}
-
-	annotations, ok := metadata["annotations"].(map[string]interface{})
-	if ok {
-		delete(annotations, "kubectl.kubernetes.io/last-applied-configuration")
-		if len(annotations) == 0 {
-			delete(metadata, "annotations")
-		}
-	}
-
-	spec, ok := m["spec"].(map[string]interface{})
-	if ok {
-		delete(spec, "finalizers")
-	}
+// ignoreAnnotations is the list of annotations to strip
+// when --strip is supplied
+var ignoreAnnotations = []string{
+	"kubectl.kubernetes.io/last-applied-configuration",
 }
 
-func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
-	formattable := fixMap(doc)
+// stripServerSideFields removes fields that have been added on the
+// server side after the resource was created such as the status field
+func stripServerSideFields(doc cty.Value) cty.Value {
+	m := doc.AsValueMap()
 
-	if stripServerSide {
-		stripServerSideFields(formattable)
+	// strip server-side metadata
+	metadata := m["metadata"].AsValueMap()
+	for _, f := range ignoreMetadata {
+		delete(metadata, f)
+	}
+	if v, ok := metadata["annotations"]; ok {
+		annotations := v.AsValueMap()
+		for _, a := range ignoreAnnotations {
+			delete(annotations, a)
+		}
+		if len(annotations) == 0 {
+			delete(metadata, "annotations")
+		} else {
+			metadata["annotations"] = cty.ObjectVal(annotations)
+		}
+	}
+	if ns, ok := metadata["namespace"]; ok && ns.AsString() == "default" {
+		delete(metadata, "namespace")
+	}
+	m["metadata"] = cty.ObjectVal(metadata)
+
+	// strip finalizer from spec
+	if v, ok := m["spec"]; ok {
+		mm := v.AsValueMap()
+		delete(mm, "finalizers")
+		m["spec"] = cty.ObjectVal(mm)
 	}
 
-	// TODO need to find a way of ordering the fields in the output
-	s, err := repl.FormatResult(formattable)
-	if err != nil {
-		return "", err
-	}
+	// strip status field
+	delete(m, "status")
 
-	kind := formattable["kind"].(string)
+	return cty.ObjectVal(m)
+}
 
+// yamlToHCL converts a single YAML document Terraform HCL
+func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	var name, resourceName string
+	m := doc.AsValueMap()
+	kind := m["kind"].AsString()
 	if kind != "List" {
-		name = formattable["metadata"].(map[string]interface{})["name"].(string)
+		metadata := m["metadata"].AsValueMap()
+		name = metadata["name"].AsString()
 		re := regexp.MustCompile(`\W`)
 		name = strings.ToLower(re.ReplaceAllString(name, "_"))
 		resourceName = strings.ToLower(kind) + "_" + name
 	} else if !mapOnly {
 		return "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
 	}
+
+	if stripServerSide {
+		doc = stripServerSideFields(doc)
+	}
+	s := repl.FormatValue(doc, 0)
 
 	var hcl string
 	if mapOnly {
@@ -129,28 +116,40 @@ func toHCL(doc map[interface{}]interface{}, providerAlias string, stripServerSid
 	return hcl, nil
 }
 
-// ToHCL converts a file containing one or more Kubernetes configs
+var yamlSeparator = "\n---"
+
+// YAMLToTerraformResources takes a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func ToHCL(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	hcl := ""
 
-	decoder := yaml.NewDecoder(r)
+	buf := bytes.Buffer{}
+	_, err := buf.ReadFrom(r)
+	if err != nil {
+		return "", err
+	}
 
 	count := 0
-	var err error
-	for {
-		var doc map[interface{}]interface{}
-		err = decoder.Decode(&doc)
-
+	manifest := string(buf.Bytes())
+	docs := strings.Split(manifest, yamlSeparator)
+	for _, doc := range docs {
+		var b []byte
+		b, err = yaml.YAMLToJSON([]byte(doc))
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return "", fmt.Errorf("error parsing YAML: %s", err)
-			}
+			return "", err
 		}
 
-		formatted, err := toHCL(doc, providerAlias, stripServerSide, mapOnly)
+		t, err := ctyjson.ImpliedType(b)
+		if err != nil {
+			return "", err
+		}
+
+		doc, err := ctyjson.Unmarshal(b, t)
+		if err != nil {
+			return "", err
+		}
+
+		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
 
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
@@ -192,7 +191,7 @@ func main() {
 		}
 	}
 
-	hcl, err := ToHCL(file, *providerAlias, *stripServerSide, *mapOnly)
+	hcl, err := YAMLToTerraformResources(file, *providerAlias, *stripServerSide, *mapOnly)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
