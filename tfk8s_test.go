@@ -204,3 +204,66 @@ metadata:
 
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
+
+func TestYAMLToTerraformResourcesEmptyDocSkip(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+data:
+  TEST: test
+kind: ConfigMap
+metadata:
+  name: test
+  namespace: default
+  resourceVersion: "677134"
+  selfLink: /api/v1/namespaces/default/configmaps/test
+  uid: bea6500b-0637-4d2d-b726-e0bda0b595dd
+---
+
+---
+apiVersion: v1
+data:
+  TEST: test
+kind: ConfigMap
+metadata:
+  name: test2
+  namespace: default
+  resourceVersion: "677134"
+  selfLink: /api/v1/namespaces/default/configmaps/test
+  uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
+
+	r := strings.NewReader(yaml)
+	output, err := YAMLToTerraformResources(r, "", true, false)
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
+	}
+
+	expected := `resource "kubernetes_manifest" "configmap_test" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "test"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "test"
+    }
+  }
+}
+
+resource "kubernetes_manifest" "configmap_test2" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "test"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "test2"
+    }
+  }
+}
+`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}

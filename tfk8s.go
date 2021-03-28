@@ -133,6 +133,11 @@ func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide
 	manifest := string(buf.Bytes())
 	docs := strings.Split(manifest, yamlSeparator)
 	for _, doc := range docs {
+		if strings.TrimSpace(doc) == "" {
+			// some manifests have empty documents
+			continue
+		}
+
 		var b []byte
 		b, err = yaml.YAMLToJSON([]byte(doc))
 		if err != nil {
