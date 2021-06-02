@@ -18,7 +18,11 @@ If you want to copy examples from the Kubernetes documentation or migrate existi
 
 ## Install
 
-For the moment, clone this repo and run:
+```
+go get -u github.com/jrhouston/tfk8s
+```
+
+Alternatively, clone this repo and run:
 
 ```
 make install
