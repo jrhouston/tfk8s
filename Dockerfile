@@ -1,7 +1,7 @@
 FROM golang:1.16-alpine as build
 WORKDIR /build
-COPY go.* .
-RUN go mod download 
+COPY go.* ./
+RUN go mod download
 COPY . .
 RUN apk --no-cache add make
 RUN CGO_ENABLED=0 make build
