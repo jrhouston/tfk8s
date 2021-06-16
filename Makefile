@@ -1,6 +1,6 @@
 .PHONY: build docker docker-push release install test clean
 
-VERSION := 0.1.3
+VERSION := 0.1.4
 DOCKER_IMAGE_NAME := jrhouston/tfk8s
 
 build:
