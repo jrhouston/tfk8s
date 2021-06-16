@@ -49,6 +49,11 @@ metadata:
 data:
   TEST: one
 ---
+# this empty
+# document 
+# should be 
+# skipped
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
