@@ -154,6 +154,11 @@ func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide
 			return "", err
 		}
 
+		if doc.IsNull() {
+			// skip empty YAML docs
+			continue
+		}
+
 		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
 
 		if err != nil {
