@@ -1,6 +1,6 @@
 .PHONY: build docker docker-push release install test clean
 
-VERSION := 0.1.4
+VERSION := 0.1.5
 DOCKER_IMAGE_NAME := jrhouston/tfk8s
 
 build:
@@ -32,7 +32,7 @@ install:
 	go install -ldflags "-X main.toolVersion=${VERSION}"
 
 test:
-	go test -v
+	go test -v ./...
 
 clean:
 	rm -rf release/*
