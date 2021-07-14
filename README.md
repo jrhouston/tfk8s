@@ -63,7 +63,7 @@ data:
 
 **output.tf**:
 ```hcl
-resource "kubernetes_manifest_hcl" "configmap_test" {
+resource "kubernetes_manifest" "configmap_test" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {
