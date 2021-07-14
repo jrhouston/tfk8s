@@ -1,4 +1,5 @@
-tfk8s
+tfk8s [![Go Report Card](https://goreportcard.com/badge/github.com/jrhouston/tfk8s)](https://goreportcard.com/report/github.com/jrhouston/tfk8s) ![tests](https://github.com/jrhouston/tfk8s/actions/workflows/test.yaml/badge.svg)
+
 ---
 
 ![](https://media.giphy.com/media/g8GfH3i5F0hby/giphy.gif)
