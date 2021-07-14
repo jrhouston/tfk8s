@@ -32,7 +32,7 @@ install:
 	go install -ldflags "-X main.toolVersion=${VERSION}"
 
 test:
-	go test -v
+	go test -v ./...
 
 clean:
 	rm -rf release/*

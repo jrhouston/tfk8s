@@ -9,14 +9,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/terraform/repl"
+	flag "github.com/spf13/pflag"
 
-	"github.com/zclconf/go-cty/cty"
+	cty "github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 
-	"sigs.k8s.io/yaml"
+	yaml "sigs.k8s.io/yaml"
 
-	flag "github.com/spf13/pflag"
+	"github.com/jrhouston/tfk8s/contrib/hashicorp/terraform"
 )
 
 // toolVersion is the version that gets printed when you run --version
@@ -99,7 +99,7 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 	if stripServerSide {
 		doc = stripServerSideFields(doc)
 	}
-	s := repl.FormatValue(doc, 0)
+	s := terraform.FormatValue(doc, 0)
 
 	var hcl string
 	if mapOnly {
