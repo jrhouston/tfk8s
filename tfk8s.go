@@ -81,36 +81,56 @@ func stripServerSideFields(doc cty.Value) cty.Value {
 	return cty.ObjectVal(m)
 }
 
+// snakify converts "a-String LIKE this" to "a_string_like_this"
+func snakify(s string) string {
+	re := regexp.MustCompile(`\W`)
+	return strings.ToLower(re.ReplaceAllString(s, "_"))
+}
+
 // yamlToHCL converts a single YAML document Terraform HCL
 func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
-	var name, resourceName string
 	m := doc.AsValueMap()
-	kind := m["kind"].AsString()
-	if kind != "List" {
-		metadata := m["metadata"].AsValueMap()
-		name = metadata["name"].AsString()
-		re := regexp.MustCompile(`\W`)
-		name = strings.ToLower(re.ReplaceAllString(name, "_"))
-		resourceName = strings.ToLower(kind) + "_" + name
-	} else if !mapOnly {
-		return "", fmt.Errorf("Converting v1.List to a full Terraform configuation is currently not supported")
+	docs := []cty.Value{doc}
+	if strings.HasSuffix(m["kind"].AsString(), "List") {
+		docs = m["items"].AsValueSlice()
 	}
 
-	if stripServerSide {
-		doc = stripServerSideFields(doc)
-	}
-	s := terraform.FormatValue(doc, 0)
-
-	var hcl string
-	if mapOnly {
-		hcl = fmt.Sprintf("%v\n", s)
-	} else {
-		hcl = fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
-		if providerAlias != "" {
-			hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
+	hcl := ""
+	for i, doc := range docs {
+		mm := doc.AsValueMap()
+		kind := mm["kind"].AsString()
+		metadata := mm["metadata"].AsValueMap()
+		name := metadata["name"].AsString()
+		var namespace string
+		if v, ok := metadata["namespace"]; ok {
+			namespace = v.AsString()
 		}
-		hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
-		hcl += fmt.Sprintf("}\n")
+
+		resourceName := kind
+		if namespace != "" && namespace != "default" {
+			resourceName = resourceName + "_" + namespace
+		}
+		resourceName = resourceName + "_" + name
+		resourceName = snakify(resourceName)
+
+		if stripServerSide {
+			doc = stripServerSideFields(doc)
+		}
+		s := terraform.FormatValue(doc, 0)
+
+		if mapOnly {
+			hcl += fmt.Sprintf("%v\n", s)
+		} else {
+			hcl += fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
+			if providerAlias != "" {
+				hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
+			}
+			hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
+			hcl += fmt.Sprintf("}\n")
+		}
+		if i != len(docs)-1 {
+			hcl += "\n"
+		}
 	}
 
 	return hcl, nil

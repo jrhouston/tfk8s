@@ -98,6 +98,83 @@ resource "kubernetes_manifest" "configmap_two" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
+func TestYAMLToTerraformResourcesList(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+kind: ConfigMapList
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: one
+  data:
+    TEST: one
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: two
+  data:
+    TEST: two
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: two
+    namespace: othernamespace
+  data:
+    TEST: two
+`
+
+	r := strings.NewReader(yaml)
+	output, err := YAMLToTerraformResources(r, "", false, false)
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
+	}
+
+	expected := `
+resource "kubernetes_manifest" "configmap_one" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "one"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "one"
+    }
+  }
+}
+
+resource "kubernetes_manifest" "configmap_two" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "two"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "two"
+    }
+  }
+}
+
+resource "kubernetes_manifest" "configmap_othernamespace_two" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "two"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "two"
+      "namespace" = "othernamespace"
+    }
+  }
+}`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}
+
 func TestYAMLToTerraformResourcesProviderAlias(t *testing.T) {
 	yaml := `---
 apiVersion: v1
