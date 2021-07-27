@@ -1,3 +1,8 @@
+# 0.1.6
+
+- Fix crash when trying to use List resources
+- Catch panics and print friendly error message
+
 # 0.1.5
 
 - Remove dependency on terraform in go.mod
