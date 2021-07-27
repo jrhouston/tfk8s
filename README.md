@@ -103,3 +103,12 @@ kubectl get ns default -o yaml | tfk8s -M
   }
 }
 ```
+
+### Converting a Helm chart
+
+You can use `helm template` to generate a manifest from the chart, then pipe it into tfk8s:
+
+
+```
+helm template ./chart-path -f values.yaml | tfk8s
+```
