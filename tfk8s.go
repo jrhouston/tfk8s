@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strings"
 
 	flag "github.com/spf13/pflag"
@@ -179,8 +180,11 @@ func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide
 			continue
 		}
 
-		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
+		if !doc.Type().IsObjectType() {
+			return "", fmt.Errorf("the manifest must be a YAML document")
+		}
 
+		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
@@ -195,7 +199,23 @@ func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide
 	return hcl, nil
 }
 
+func capturePanic() {
+	if r := recover(); r != nil {
+		fmt.Printf(
+			"panic: %s\n\n%s\n\n"+
+				"⚠️  Oh no! Looks like your manifest caused tfk8s to crash.\n\n"+
+				"Please open a GitHub issue and include your manifest YAML with the stack trace above,\n"+
+				"or ping me on slack and I'll try and fix it!\n\n"+
+				"GitHub: https://github.com/jrhouston/tfk8s/issues\n"+
+				"Slack: #terraform-providers on https://kubernetes.slack.com\n\n"+
+				"- Thanks, @jrhouston\n\n",
+			r, debug.Stack())
+	}
+}
+
 func main() {
+	defer capturePanic()
+
 	infile := flag.StringP("file", "f", "-", "Input file containing Kubernetes YAML manifests")
 	outfile := flag.StringP("output", "o", "-", "Output file to write Terraform config")
 	providerAlias := flag.StringP("provider", "p", "", "Provider alias to populate the `provider` attribute")
@@ -223,7 +243,7 @@ func main() {
 
 	hcl, err := YAMLToTerraformResources(file, *providerAlias, *stripServerSide, *mapOnly)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("error:", err)
 		os.Exit(1)
 	}
 
