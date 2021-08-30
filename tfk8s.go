@@ -88,6 +88,12 @@ func snakify(s string) string {
 	return strings.ToLower(re.ReplaceAllString(s, "_"))
 }
 
+// escape incidences of ${} with $${} to prevent Terraform trying to interpolate them
+func escapeShellVars(s string) string {
+	r := regexp.MustCompile(`(\${.*?})`)
+	return r.ReplaceAllString(s, `$$$1`)
+}
+
 // yamlToHCL converts a single YAML document Terraform HCL
 func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
 	m := doc.AsValueMap()
@@ -118,6 +124,7 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 			doc = stripServerSideFields(doc)
 		}
 		s := terraform.FormatValue(doc, 0)
+		s = escapeShellVars(s)
 
 		if mapOnly {
 			hcl += fmt.Sprintf("%v\n", s)

@@ -1,3 +1,7 @@
+# 0.1.7
+
+- Escape shell vars in HCL output
+
 # 0.1.6
 
 - Fix crash when trying to use List resources
