@@ -107,10 +107,19 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 		mm := doc.AsValueMap()
 		kind := mm["kind"].AsString()
 		metadata := mm["metadata"].AsValueMap()
-		name := metadata["name"].AsString()
 		var namespace string
 		if v, ok := metadata["namespace"]; ok {
 			namespace = v.AsString()
+		}
+
+		var name string
+		if n, ok := metadata["name"]; ok {
+			name = n.AsString()
+		} else if n, ok := metadata["generateName"]; ok {
+			name = n.AsString()
+			if name[len(name)-1] == '-' {
+				name = name[:len(name)-1]
+			}
 		}
 
 		resourceName := kind

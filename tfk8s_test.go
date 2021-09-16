@@ -40,6 +40,39 @@ resource "kubernetes_manifest" "configmap_test" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
+func TestYAMLToTerraformResourcesGenerateName(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  generateName: test-name-
+data:
+  TEST: test`
+
+	r := strings.NewReader(yaml)
+	output, err := YAMLToTerraformResources(r, "", false, false)
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
+	}
+
+	expected := `
+resource "kubernetes_manifest" "configmap_test_name" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "test"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "generateName" = "test-name-"
+    }
+  }
+}`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}
+
 func TestYAMLToTerraformResourcesEscapeShell(t *testing.T) {
 	yaml := `---
 apiVersion: v1
