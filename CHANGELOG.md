@@ -1,3 +1,7 @@
+# 0.1.8
+
+- Support resources using generateName 
+
 # 0.1.7
 
 - Escape shell vars in HCL output
