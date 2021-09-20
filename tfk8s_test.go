@@ -50,7 +50,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
