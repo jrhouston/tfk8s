@@ -1,6 +1,7 @@
 # 0.1.8
 
 - Support resources using generateName 
+- Add option to remove quotes from object/map keys when not needed
 
 # 0.1.7
 

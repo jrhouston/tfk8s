@@ -95,7 +95,9 @@ func escapeShellVars(s string) string {
 }
 
 // yamlToHCL converts a single YAML document Terraform HCL
-func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+func yamlToHCL(
+	doc cty.Value, providerAlias string,
+	stripServerSide bool, mapOnly bool, stripKeyQuotes bool) (string, error) {
 	m := doc.AsValueMap()
 	docs := []cty.Value{doc}
 	if strings.HasSuffix(m["kind"].AsString(), "List") {
@@ -132,7 +134,7 @@ func yamlToHCL(doc cty.Value, providerAlias string, stripServerSide bool, mapOnl
 		if stripServerSide {
 			doc = stripServerSideFields(doc)
 		}
-		s := terraform.FormatValue(doc, 0)
+		s := terraform.FormatValue(doc, 0, stripKeyQuotes)
 		s = escapeShellVars(s)
 
 		if mapOnly {
@@ -157,7 +159,11 @@ var yamlSeparator = "\n---"
 
 // YAMLToTerraformResources takes a file containing one or more Kubernetes configs
 // and converts it to resources that can be used by the Terraform Kubernetes Provider
-func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide bool, mapOnly bool) (string, error) {
+//
+// FIXME this function has too many arguments now, use functional options instead
+func YAMLToTerraformResources(
+	r io.Reader, providerAlias string, stripServerSide bool,
+	mapOnly bool, stripKeyQuotes bool) (string, error) {
 	hcl := ""
 
 	buf := bytes.Buffer{}
@@ -200,7 +206,7 @@ func YAMLToTerraformResources(r io.Reader, providerAlias string, stripServerSide
 			return "", fmt.Errorf("the manifest must be a YAML document")
 		}
 
-		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly)
+		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly, stripKeyQuotes)
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
@@ -238,6 +244,7 @@ func main() {
 	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
 	version := flag.BoolP("version", "V", false, "Show tool version")
 	mapOnly := flag.BoolP("map-only", "M", false, "Output only an HCL map structure")
+	stripKeyQuotes := flag.BoolP("strip-key-quotes", "Q", false, "Strip out quotes from HCL map keys unless they are required.")
 	flag.Parse()
 
 	if *version {
@@ -257,7 +264,8 @@ func main() {
 		}
 	}
 
-	hcl, err := YAMLToTerraformResources(file, *providerAlias, *stripServerSide, *mapOnly)
+	hcl, err := YAMLToTerraformResources(
+		file, *providerAlias, *stripServerSide, *mapOnly, *stripKeyQuotes)
 	if err != nil {
 		fmt.Println("error:", err)
 		os.Exit(1)

@@ -180,7 +180,40 @@ EOT_`,
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%#v", test.Val), func(t *testing.T) {
-			got := FormatValue(test.Val, 0)
+			got := FormatValue(test.Val, 0, false)
+			if got != test.Want {
+				t.Errorf("wrong result\nvalue: %#v\ngot:   %s\nwant:  %s", test.Val, got, test.Want)
+			}
+		})
+	}
+}
+
+func TestFormatValueStripQuotes(t *testing.T) {
+	tests := []struct {
+		Val  cty.Value
+		Want string
+	}{
+		{
+			cty.ObjectVal(map[string]cty.Value{
+				"$hello":      cty.StringVal("test"),
+				"1helloworld": cty.StringVal("test"),
+				"hello":       cty.StringVal("test"),
+				"hello-world": cty.StringVal("test"),
+				"hello_world": cty.StringVal("test"),
+			}),
+			`{
+  "$hello" = "test"
+  "1helloworld" = "test"
+  hello = "test"
+  hello-world = "test"
+  hello_world = "test"
+}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%#v", test.Val), func(t *testing.T) {
+			got := FormatValue(test.Val, 0, true)
 			if got != test.Want {
 				t.Errorf("wrong result\nvalue: %#v\ngot:   %s\nwant:  %s", test.Val, got, test.Want)
 			}

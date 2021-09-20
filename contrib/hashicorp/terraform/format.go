@@ -1,10 +1,14 @@
 // NOTE this file was lifted verbatim from internal/repl in the terraform project
 // because the FormatValue function became internal in v1.0.0
 
+// NOTE this file has since been modified so it has drifted from what was in
+// terraform core
+
 package terraform
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -15,7 +19,7 @@ import (
 // and uses the type conversion functions where necessary to indicate exactly
 // what type it is given, so that equality test failures can be quickly
 // understood.
-func FormatValue(v cty.Value, indent int) string {
+func FormatValue(v cty.Value, indent int, stripKeyQuotes bool) string {
 	if !v.IsKnown() {
 		return "(known after apply)"
 	}
@@ -64,15 +68,15 @@ func FormatValue(v cty.Value, indent int) string {
 			}
 		}
 	case ty.IsObjectType():
-		return formatMappingValue(v, indent)
+		return formatMappingValue(v, indent, stripKeyQuotes)
 	case ty.IsTupleType():
-		return formatSequenceValue(v, indent)
+		return formatSequenceValue(v, indent, stripKeyQuotes)
 	case ty.IsListType():
-		return fmt.Sprintf("tolist(%s)", formatSequenceValue(v, indent))
+		return fmt.Sprintf("tolist(%s)", formatSequenceValue(v, indent, stripKeyQuotes))
 	case ty.IsSetType():
-		return fmt.Sprintf("toset(%s)", formatSequenceValue(v, indent))
+		return fmt.Sprintf("toset(%s)", formatSequenceValue(v, indent, stripKeyQuotes))
 	case ty.IsMapType():
-		return fmt.Sprintf("tomap(%s)", formatMappingValue(v, indent))
+		return fmt.Sprintf("tomap(%s)", formatMappingValue(v, indent, stripKeyQuotes))
 	}
 
 	// Should never get here because there are no other types
@@ -129,7 +133,7 @@ OUTER:
 	return buf.String(), true
 }
 
-func formatMappingValue(v cty.Value, indent int) string {
+func formatMappingValue(v cty.Value, indent int, stripKeyQuotes bool) string {
 	var buf strings.Builder
 	count := 0
 	buf.WriteByte('{')
@@ -139,9 +143,18 @@ func formatMappingValue(v cty.Value, indent int) string {
 		k, v := it.Element()
 		buf.WriteByte('\n')
 		buf.WriteString(strings.Repeat(" ", indent))
-		buf.WriteString(FormatValue(k, indent))
+		key := FormatValue(k, indent, stripKeyQuotes)
+		if stripKeyQuotes {
+			// they can be unquoted if it starts with a letter
+			// and only contains alphanumeric characeters, dashes, and underlines
+			m := regexp.MustCompile(`^"[A-Za-z][0-9A-Za-z-_]+"$`)
+			if m.MatchString(key) {
+				key = key[1 : len(key)-1]
+			}
+		}
+		buf.WriteString(key)
 		buf.WriteString(" = ")
-		buf.WriteString(FormatValue(v, indent))
+		buf.WriteString(FormatValue(v, indent, stripKeyQuotes))
 	}
 	indent -= 2
 	if count > 0 {
@@ -152,7 +165,7 @@ func formatMappingValue(v cty.Value, indent int) string {
 	return buf.String()
 }
 
-func formatSequenceValue(v cty.Value, indent int) string {
+func formatSequenceValue(v cty.Value, indent int, stripKeyQuotes bool) string {
 	var buf strings.Builder
 	count := 0
 	buf.WriteByte('[')
@@ -162,7 +175,7 @@ func formatSequenceValue(v cty.Value, indent int) string {
 		_, v := it.Element()
 		buf.WriteByte('\n')
 		buf.WriteString(strings.Repeat(" ", indent))
-		buf.WriteString(FormatValue(v, indent))
+		buf.WriteString(FormatValue(v, indent, stripKeyQuotes))
 		buf.WriteByte(',')
 	}
 	indent -= 2
