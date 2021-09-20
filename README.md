@@ -37,7 +37,20 @@ export PATH=$PATH:$(go env GOPATH)/bin
 
 ## Usage
 
-### Creating Terraform configurations
+```
+Usage of tfk8s:
+  -f, --file string         Input file containing Kubernetes YAML manifests (default "-")
+  -M, --map-only            Output only an HCL map structure
+  -o, --output string       Output file to write Terraform config (default "-")
+  -p, --provider provider   Provider alias to populate the provider attribute
+  -s, --strip               Strip out server side fields - use if you are piping from kubectl get
+  -Q, --strip-key-quotes    Strip out quotes from HCL map keys unless they are required.
+  -V, --version             Show tool version
+```
+
+## Examples
+
+### Create Terraform configuration from YAML files
 
 ```
 tfk8s -f input.yaml -o output.tf
@@ -104,7 +117,7 @@ kubectl get ns default -o yaml | tfk8s -M
 }
 ```
 
-### Converting a Helm chart
+### Convert a Helm chart to Terraform
 
 You can use `helm template` to generate a manifest from the chart, then pipe it into tfk8s:
 
