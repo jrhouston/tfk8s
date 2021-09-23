@@ -40,11 +40,12 @@ export PATH=$PATH:$(go env GOPATH)/bin
 ```
 Usage of tfk8s:
   -f, --file string         Input file containing Kubernetes YAML manifests (default "-")
+  -I, --import              Add a comment above each resource with the terraform import command
   -M, --map-only            Output only an HCL map structure
   -o, --output string       Output file to write Terraform config (default "-")
   -p, --provider provider   Provider alias to populate the provider attribute
   -s, --strip               Strip out server side fields - use if you are piping from kubectl get
-  -Q, --strip-key-quotes    Strip out quotes from HCL map keys unless they are required.
+  -Q, --strip-key-quotes    Strip out quotes from HCL map keys unless they are required
   -V, --version             Show tool version
 ```
 
