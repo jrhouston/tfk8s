@@ -6,9 +6,9 @@ tfk8s [![Go Report Card](https://goreportcard.com/badge/github.com/jrhouston/tfk
 
 `tfk8s` is a tool that makes it easier to work with the [Terraform Kubernetes Provider](https://github.com/hashicorp/terraform-provider-kubernetes).
 
-If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert YAML to HCL by hand, this tool is for you. 
+If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert YAML to HCL by hand, this tool is for you.
 
-## Demo 
+## Demo
 
 [<img src="https://asciinema.org/a/jSmyAg4Ar6EcwKCTCXN8iAJM2.svg" width="250">](https://asciinema.org/a/jSmyAg4Ar6EcwKCTCXN8iAJM2)
 
@@ -19,6 +19,7 @@ If you want to copy examples from the Kubernetes documentation or migrate existi
 
 ## Install
 
+#### Option 1: go install
 ```
 go install github.com/jrhouston/tfk8s@latest
 ```
@@ -34,6 +35,15 @@ If Go's bin directory is not in your `PATH` you will need to add it:
 ```
 export PATH=$PATH:$(go env GOPATH)/bin
 ```
+
+#### Option 2: GitHub release
+
+1. Download the [latest](https://github.com/jrhouston/tfk8s/releases/latest) release’s tarball for your client platform.
+2. Extract the tarball:
+```sh
+tar -xvf <RELEASE-TARBALL-NAME>.tar.gz
+```
+3. Move the extracted tfk8s binary to somewhere in your $PATH (/usr/local/bin for most users).
 
 ## Usage
 
