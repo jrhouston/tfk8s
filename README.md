@@ -35,6 +35,12 @@ If Go's bin directory is not in your `PATH` you will need to add it:
 export PATH=$PATH:$(go env GOPATH)/bin
 ```
 
+On macOS, you can also install via [MacPorts](https://www.macports.org):
+
+```
+sudo port install tfk8s
+```
+
 ## Usage
 
 ```
