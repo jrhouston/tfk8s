@@ -90,7 +90,7 @@ func snakify(s string) string {
 
 // escape incidences of ${} with $${} to prevent Terraform trying to interpolate them
 func escapeShellVars(s string) string {
-	r := regexp.MustCompile(`(\${.*?})`)
+	r := regexp.MustCompile(`(\${.*?)`)
 	return r.ReplaceAllString(s, `$$$1`)
 }
 
