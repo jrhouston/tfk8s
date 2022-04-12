@@ -81,7 +81,8 @@ metadata:
   name: test
 data:
   SCRIPT: |
-    echo Hello, ${USER} your homedir is ${HOME}`
+    echo "Hello, ${USER} your homedir is ${HOME}"
+    echo "\${SHELL_ESCAPE${TF_ESCAPE}}"`
 
 	r := strings.NewReader(yaml)
 	output, err := YAMLToTerraformResources(r, "", false, false, false)
@@ -95,7 +96,10 @@ resource "kubernetes_manifest" "configmap_test" {
   manifest = {
     "apiVersion" = "v1"
     "data" = {
-      "SCRIPT" = "echo Hello, $${USER} your homedir is $${HOME}"
+      "SCRIPT" = <<-EOT
+      echo "Hello, $${USER} your homedir is $${HOME}"
+      echo "\$${SHELL_ESCAPE$${TF_ESCAPE}}"
+      EOT
     }
     "kind" = "ConfigMap"
     "metadata" = {
@@ -117,8 +121,8 @@ data:
   TEST: one
 ---
 # this empty
-# document 
-# should be 
+# document
+# should be
 # skipped
 ---
 apiVersion: v1
