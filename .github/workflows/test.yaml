@@ -12,7 +12,10 @@ jobs:
   unit_test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@main
-    - name: make test
-      run: |
-        make test
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
+      with:
+        go-version-file: '.go-version'
+        cache: true
+    - name: test
+      run: make test
