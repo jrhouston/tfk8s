@@ -8,6 +8,15 @@ tfk8s [![Go Report Card](https://goreportcard.com/badge/github.com/jrhouston/tfk
 
 If you want to copy examples from the Kubernetes documentation or migrate existing YAML manifests and use them with Terraform without having to convert YAML to HCL by hand, this tool is for you.
 
+- [Demo](#demo)
+- [Features](#features)
+- [Install](#install)
+- [Usage](#usage)
+- [Examples](#examples)
+  - [Create Terraform configuration from YAML files](#create-terraform-configuration-from-yaml-files)
+  - [Use with kubectl to output maps instead of YAML](#use-with-kubectl-to-output-maps-instead-of-yaml)
+  - [Convert a Helm chart to Terraform](#convert-a-helm-chart-to-terraform)
+
 ## Demo
 
 [<img src="https://asciinema.org/a/jSmyAg4Ar6EcwKCTCXN8iAJM2.svg" width="250">](https://asciinema.org/a/jSmyAg4Ar6EcwKCTCXN8iAJM2)
