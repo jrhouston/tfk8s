@@ -258,7 +258,7 @@ func main() {
 		var err error
 		file, err = os.Open(*infile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\r\n", err.Error())
+			fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -266,7 +266,7 @@ func main() {
 	hcl, err := YAMLToTerraformResources(
 		file, *providerAlias, *stripServerSide, *mapOnly, *stripKeyQuotes)
 	if err != nil {
-		fmt.Println("error:", err)
+		fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 		os.Exit(1)
 	}
 
@@ -275,7 +275,7 @@ func main() {
 	} else {
 		err := os.WriteFile(*outfile, []byte(hcl), 0644)
 		if err != nil {
-			fmt.Println("error:", err)
+			fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 			os.Exit(1)
 		}
 	}
