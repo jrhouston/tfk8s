@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -145,7 +144,7 @@ func yamlToHCL(
 				hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
 			}
 			hcl += fmt.Sprintf("  manifest = %v\n", strings.ReplaceAll(s, "\n", "\n  "))
-			hcl += fmt.Sprintf("}\n")
+			hcl += "}\n"
 		}
 		if i != len(docs)-1 {
 			hcl += "\n"
@@ -173,7 +172,7 @@ func YAMLToTerraformResources(
 	}
 
 	count := 0
-	manifest := string(buf.Bytes())
+	manifest := buf.String()
 	docs := strings.Split(manifest, yamlSeparator)
 	for _, doc := range docs {
 		if strings.TrimSpace(doc) == "" {
@@ -259,7 +258,7 @@ func main() {
 		var err error
 		file, err = os.Open(*infile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\r\n", err.Error())
+			fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -267,13 +266,17 @@ func main() {
 	hcl, err := YAMLToTerraformResources(
 		file, *providerAlias, *stripServerSide, *mapOnly, *stripKeyQuotes)
 	if err != nil {
-		fmt.Println("error:", err)
+		fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 		os.Exit(1)
 	}
 
 	if *outfile == "-" {
 		fmt.Print(hcl)
 	} else {
-		ioutil.WriteFile(*outfile, []byte(hcl), 0644)
+		err := os.WriteFile(*outfile, []byte(hcl), 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
+			os.Exit(1)
+		}
 	}
 }
