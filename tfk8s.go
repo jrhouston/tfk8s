@@ -96,7 +96,7 @@ func escapeShellVars(s string) string {
 // yamlToHCL converts a single YAML document Terraform HCL
 func yamlToHCL(
 	doc cty.Value, providerAlias string,
-	stripServerSide bool, mapOnly bool, stripKeyQuotes bool) (string, error) {
+	stripServerSide bool, mapOnly bool, stripKeyQuotes bool, importComment bool) (string, error) {
 	m := doc.AsValueMap()
 	docs := []cty.Value{doc}
 	if strings.HasSuffix(m["kind"].AsString(), "List") {
@@ -107,6 +107,7 @@ func yamlToHCL(
 	for i, doc := range docs {
 		mm := doc.AsValueMap()
 		kind := mm["kind"].AsString()
+		apiVersion := mm["apiVersion"].AsString()
 		metadata := mm["metadata"].AsValueMap()
 		var namespace string
 		if v, ok := metadata["namespace"]; ok {
@@ -139,6 +140,13 @@ func yamlToHCL(
 		if mapOnly {
 			hcl += fmt.Sprintf("%v\n", s)
 		} else {
+			if importComment {
+				importID := fmt.Sprintf("apiVersion=%s,kind=%s,name=%s", apiVersion, kind, name)
+				if namespace != "" {
+					importID += ",namespace=" + namespace
+				}
+				hcl += fmt.Sprintf("# terraform import %s.%s %q\n", resourceType, resourceName, importID)
+			}
 			hcl += fmt.Sprintf("resource %q %q {\n", resourceType, resourceName)
 			if providerAlias != "" {
 				hcl += fmt.Sprintf("  provider = %v\n\n", providerAlias)
@@ -162,7 +170,7 @@ var yamlSeparator = "\n---"
 // FIXME this function has too many arguments now, use functional options instead
 func YAMLToTerraformResources(
 	r io.Reader, providerAlias string, stripServerSide bool,
-	mapOnly bool, stripKeyQuotes bool) (string, error) {
+	mapOnly bool, stripKeyQuotes bool, importComment bool) (string, error) {
 	hcl := ""
 
 	buf := bytes.Buffer{}
@@ -205,7 +213,7 @@ func YAMLToTerraformResources(
 			return "", fmt.Errorf("the manifest must be a YAML document")
 		}
 
-		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly, stripKeyQuotes)
+		formatted, err := yamlToHCL(doc, providerAlias, stripServerSide, mapOnly, stripKeyQuotes, importComment)
 		if err != nil {
 			return "", fmt.Errorf("error converting YAML to HCL: %s", err)
 		}
@@ -243,7 +251,8 @@ func main() {
 	stripServerSide := flag.BoolP("strip", "s", false, "Strip out server side fields - use if you are piping from kubectl get")
 	version := flag.BoolP("version", "V", false, "Show tool version")
 	mapOnly := flag.BoolP("map-only", "M", false, "Output only an HCL map structure")
-	stripKeyQuotes := flag.BoolP("strip-key-quotes", "Q", false, "Strip out quotes from HCL map keys unless they are required.")
+	stripKeyQuotes := flag.BoolP("strip-key-quotes", "Q", false, "Strip out quotes from HCL map keys unless they are required")
+	importComment := flag.BoolP("import", "I", false, "Add a comment above each resource with the terraform import command")
 	flag.Parse()
 
 	if *version {
@@ -264,7 +273,7 @@ func main() {
 	}
 
 	hcl, err := YAMLToTerraformResources(
-		file, *providerAlias, *stripServerSide, *mapOnly, *stripKeyQuotes)
+		file, *providerAlias, *stripServerSide, *mapOnly, *stripKeyQuotes, *importComment)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\r\n", err.Error())
 		os.Exit(1)

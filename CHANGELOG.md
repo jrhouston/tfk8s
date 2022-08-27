@@ -2,6 +2,7 @@
 
 - Support resources using generateName 
 - Add option to remove quotes from object/map keys when not needed
+- Add option to add a comment with the import syntax 
 
 # 0.1.7
 

@@ -17,7 +17,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -50,7 +50,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -73,6 +73,41 @@ resource "kubernetes_manifest" "configmap_test_name" {
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
 }
 
+func TestYAMLToTerraformResourcesImportComment(t *testing.T) {
+	yaml := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  namespace: test-ns
+data:
+  TEST: test`
+
+	r := strings.NewReader(yaml)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, true)
+
+	if err != nil {
+		t.Fatal("Converting to HCL failed:", err)
+	}
+
+	expected := `# terraform import kubernetes_manifest.configmap_test_ns_test "apiVersion=v1,kind=ConfigMap,name=test,namespace=test-ns"
+resource "kubernetes_manifest" "configmap_test_ns_test" {
+  manifest = {
+    "apiVersion" = "v1"
+    "data" = {
+      "TEST" = "test"
+    }
+    "kind" = "ConfigMap"
+    "metadata" = {
+      "name" = "test"
+      "namespace" = "test-ns"
+    }
+  }
+}`
+
+	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(output))
+}
+
 func TestYAMLToTerraformResourcesEscapeShell(t *testing.T) {
 	yaml := `---
 apiVersion: v1
@@ -85,7 +120,7 @@ data:
     echo "\${SHELL_ESCAPE${TF_ESCAPE}}"`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -133,7 +168,7 @@ data:
   TEST: two`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -196,7 +231,7 @@ items:
 `
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", false, false, false)
+	output, err := YAMLToTerraformResources(r, "", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -256,7 +291,7 @@ data:
   TEST: test`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "kubernetes-alpha", false, false, false)
+	output, err := YAMLToTerraformResources(r, "kubernetes-alpha", false, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -301,7 +336,7 @@ metadata:
   - test`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", true, false, false)
+	output, err := YAMLToTerraformResources(r, "", true, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -338,7 +373,7 @@ metadata:
   uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", true, true, false)
+	output, err := YAMLToTerraformResources(r, "", true, true, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
@@ -385,7 +420,7 @@ metadata:
   uid: bea6500b-0637-4d2d-b726-e0bda0b595dd`
 
 	r := strings.NewReader(yaml)
-	output, err := YAMLToTerraformResources(r, "", true, false, false)
+	output, err := YAMLToTerraformResources(r, "", true, false, false, false)
 
 	if err != nil {
 		t.Fatal("Converting to HCL failed:", err)
