@@ -2,6 +2,7 @@
 
 - Support resources using generateName 
 - Add option to remove quotes from object/map keys when not needed
+- Match nested interpolation when escaping shell
 
 # 0.1.7
 
