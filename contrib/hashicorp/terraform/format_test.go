@@ -165,6 +165,34 @@ EOT_`,
 ]`,
 		},
 		{
+			cty.TupleVal([]cty.Value{
+				cty.StringVal("boop\nbeep"),
+				cty.StringVal("b"),
+			}),
+			`[
+  <<-EOT
+  boop
+  beep
+  EOT
+  ,
+  "b",
+]`,
+		},
+		{
+			cty.TupleVal([]cty.Value{
+				cty.StringVal("b"),
+				cty.StringVal("boop\nbeep"),
+			}),
+			`[
+  "b",
+  <<-EOT
+  boop
+  beep
+  EOT
+  ,
+]`,
+		},
+		{
 			cty.ListValEmpty(cty.String),
 			`tolist([])`,
 		},

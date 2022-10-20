@@ -83,6 +83,9 @@ func FormatValue(v cty.Value, indent int, stripKeyQuotes bool) string {
 	return fmt.Sprintf("%#v", v)
 }
 
+// defaultDelimiter is "End Of Text" by convention
+const defaultDelimiter = "EOT"
+
 func formatMultilineString(v cty.Value, indent int) (string, bool) {
 	str := v.AsString()
 	lines := strings.Split(str, "\n")
@@ -96,8 +99,7 @@ func formatMultilineString(v cty.Value, indent int) (string, bool) {
 		operator = "<<-"
 	}
 
-	// Default delimiter is "End Of Text" by convention
-	delimiter := "EOT"
+	delimiter := defaultDelimiter
 
 OUTER:
 	for {
@@ -175,7 +177,13 @@ func formatSequenceValue(v cty.Value, indent int, stripKeyQuotes bool) string {
 		_, v := it.Element()
 		buf.WriteByte('\n')
 		buf.WriteString(strings.Repeat(" ", indent))
-		buf.WriteString(FormatValue(v, indent, stripKeyQuotes))
+		formattedValue := FormatValue(v, indent, stripKeyQuotes)
+		buf.WriteString(formattedValue)
+		if strings.HasSuffix(formattedValue, defaultDelimiter) {
+			// write an additional newline if the value was a multiline string
+			buf.WriteByte('\n')
+			buf.WriteString(strings.Repeat(" ", indent))
+		}
 		buf.WriteByte(',')
 	}
 	indent -= 2
