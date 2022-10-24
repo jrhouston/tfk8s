@@ -1,3 +1,7 @@
+# 0.1.9
+
+- Fix comma placement when formatting multi-line string values inside lists
+
 # 0.1.8
 
 - Support resources using generateName 
