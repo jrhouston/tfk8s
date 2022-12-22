@@ -297,6 +297,7 @@ metadata:
   resourceVersion: "677134"
   selfLink: /api/v1/namespaces/default/configmaps/test
   uid: bea6500b-0637-4d2d-b726-e0bda0b595dd
+  generation: 1
   finalizers:
   - test`
 
