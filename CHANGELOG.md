@@ -1,3 +1,7 @@
+# 0.1.10
+
+- Fix generation field not being stripped when using --strip
+
 # 0.1.9
 
 - Fix comma placement when formatting multi-line string values inside lists

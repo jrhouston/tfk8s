@@ -34,6 +34,7 @@ var ignoreMetadata = []string{
 	"uid",
 	"managedFields",
 	"finalizers",
+        "generation",
 }
 
 // ignoreAnnotations is the list of annotations to strip
