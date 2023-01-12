@@ -16,6 +16,7 @@ If you want to copy examples from the Kubernetes documentation or migrate existi
   - [Create Terraform configuration from YAML files](#create-terraform-configuration-from-yaml-files)
   - [Use with kubectl to output maps instead of YAML](#use-with-kubectl-to-output-maps-instead-of-yaml)
   - [Convert a Helm chart to Terraform](#convert-a-helm-chart-to-terraform)
+  - [Convert a directory tree of manifests to Terraform](#convert-a-directory-tree-of-manifests-to-terraform)
 
 ## Demo
 
@@ -142,7 +143,14 @@ kubectl get ns default -o yaml | tfk8s -M
 
 You can use `helm template` to generate a manifest from the chart, then pipe it into tfk8s:
 
-
 ```
 helm template ./chart-path -f values.yaml | tfk8s
+```
+
+## Convert a directory tree of manifests to Terraform
+
+You can use `tfk8s` in conjunction with `find` to convert an entire directory recursively:
+
+```bash
+find dirname/ -name '*.yaml' -type f -exec sh -c 'tfk8s -f {} -o $(echo {} | sed "s/\.[^.]*$//").tf' \;
 ```
